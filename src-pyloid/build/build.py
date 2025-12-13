@@ -1,4 +1,5 @@
 import sys
+import os
 if sys.platform == 'win32':
     sys.stdout.reconfigure(encoding='utf-8')
     sys.stderr.reconfigure(encoding='utf-8')
@@ -8,6 +9,10 @@ from pyloid_builder.pyinstaller import pyinstaller
 from pyloid_builder.optimize import optimize
 from pyloid.utils import get_platform
 
+# Find faster_whisper assets directory
+import faster_whisper
+faster_whisper_path = os.path.dirname(faster_whisper.__file__)
+faster_whisper_assets = os.path.join(faster_whisper_path, 'assets')
 
 main_script = './src-pyloid/main.py'
 name = 'VoiceFlow'
@@ -44,6 +49,7 @@ if __name__ == '__main__':
 			'--windowed',
 			'--add-data=./src-pyloid/icons/:./src-pyloid/icons/',
 			'--add-data=./dist-front/:./dist-front/',
+			f'--add-data={faster_whisper_assets}:faster_whisper/assets/',
 			f'--icon={icon}',
 		],
 	)
