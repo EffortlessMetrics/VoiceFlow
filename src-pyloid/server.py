@@ -151,3 +151,33 @@ async def reset_all_data():
     if _on_data_reset:
         _on_data_reset()
     return {"success": True}
+
+# Window Management Callbacks
+_window_actions = {
+    "minimize": None,
+    "maximize": None,
+    "close": None
+}
+
+def register_window_actions(minimize_cb, maximize_cb, close_cb):
+    _window_actions["minimize"] = minimize_cb
+    _window_actions["maximize"] = maximize_cb
+    _window_actions["close"] = close_cb
+
+@server.method()
+async def window_minimize():
+    if _window_actions["minimize"]:
+        _window_actions["minimize"]()
+    return {"success": True}
+
+@server.method()
+async def window_toggle_maximize():
+    if _window_actions["maximize"]:
+        _window_actions["maximize"]()
+    return {"success": True}
+
+@server.method()
+async def window_close():
+    if _window_actions["close"]:
+        _window_actions["close"]()
+    return {"success": True}

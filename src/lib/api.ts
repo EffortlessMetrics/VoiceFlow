@@ -57,4 +57,16 @@ export const api = {
   async resetAllData(): Promise<void> {
     await rpc.call("reset_all_data");
   },
+
+  async windowMinimize(): Promise<void> {
+    await rpc.call("window_minimize");
+  },
+
+  async windowToggleMaximize(): Promise<void> {
+    await rpc.call("window_toggle_maximize");
+  },
+
+  async windowClose(): Promise<void> {
+    await rpc.call("window_close");
+  },
 };

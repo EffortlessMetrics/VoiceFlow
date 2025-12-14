@@ -3,7 +3,7 @@ from pyloid.utils import get_production_path, is_production
 from pyloid.serve import pyloid_serve
 from pyloid import Pyloid
 
-from server import server, register_onboarding_complete_callback, register_data_reset_callback
+from server import server, register_onboarding_complete_callback, register_data_reset_callback, register_window_actions
 from app_controller import get_controller
 from services.logger import setup_logger, info, error, debug, exception
 
@@ -11,6 +11,10 @@ from services.logger import setup_logger, info, error, debug, exception
 logger = setup_logger()
 
 # Initialize app
+# Reverting OpenGL attribute to standard
+# from PySide6.QtCore import Qt, QCoreApplication
+# QCoreApplication.setAttribute(Qt.AA_ShareOpenGLContexts)
+
 app = Pyloid(app_name="VoiceFlow", single_instance=True, server=server)
 
 app.set_icon(get_production_path("src-pyloid/icons/icon.png"))
@@ -263,14 +267,72 @@ settings = controller.get_settings()
 onboarding_complete = settings.get("onboardingComplete", False)
 info(f"Startup: onboarding_complete={onboarding_complete}")
 
+# Get Screen Info for main window
+get_screen_info()
+
+
+# Window Control Functions
+def minimize_main_window():
+    if window:
+        window._window._window.showMinimized()
+
+def toggle_maximize_main_window():
+    if window:
+        qwin = window._window._window
+        if qwin.isMaximized():
+            qwin.showNormal()
+        else:
+            qwin.showMaximized()
+
+def close_main_window():
+    # Instead of quitting, we hide to tray if onboarding is done
+    if window:
+        window.hide()
+
+# Register these actions with the server so RPC can call them
+register_window_actions(minimize_main_window, toggle_maximize_main_window, close_main_window)
+
+
 # Main window setup
 if is_production():
     url = pyloid_serve(directory=get_production_path("dist-front"))
-    window = app.create_window(title="VoiceFlow")
+    # Revert to standard frame, no transparency to fix crash
+    window = app.create_window(title="VoiceFlow", frame=True, transparent=False, dev_tools=False)
+    # try:
+    #     window._window.web_view.page().setBackgroundColor(QColor(0, 0, 0, 0))
+    # except Exception as e:
+    #     error(f"Failed to set transparent background: {e}")
     window.load_url(url)
 else:
-    window = app.create_window(title="VoiceFlow", dev_tools=True)
+    # Dev: Standard Frame
+    window = app.create_window(title="VoiceFlow", dev_tools=False, frame=True, transparent=False)
+    # try:
+    #     window._window.web_view.page().setBackgroundColor(QColor(0, 0, 0, 0)) 
+    # except Exception as e:
+    #     error(f"Failed to set transparent background: {e}")
     window.load_url("http://localhost:5173")
+
+# Enforce Minimum Size Globally based on Screen Size
+try:
+    # Use cached screen info or default
+    target_width = int(_screen_width * 0.8)
+    target_height = int(_screen_height * 0.8)
+    
+    # Fallback if detection failed or is weird
+    if target_width < 1024: target_width = 1280
+    if target_height < 720: target_height = 800
+
+    qwindow = window._window._window
+    # Set Minimum Size to ensure it never gets "small" as requested
+    qwindow.setMinimumSize(target_width, target_height)
+    
+    # Also set the initial size to this target
+    window.set_size(target_width, target_height)
+    
+    info(f"Window sizing forced: Min/Default = {target_width}x{target_height}")
+except Exception as e:
+    error(f"Failed to set window size constraints: {e}")
+
 
 if onboarding_complete:
     # Start minimized - user can open via tray icon
@@ -281,11 +343,11 @@ if onboarding_complete:
 else:
     # Show maximized for onboarding experience
     window.show()
-    window.set_size(1280, 800)  # Good default size
     try:
         # Try to maximize the window
-        qwindow = window._window._window
-        qwindow.showMaximized()
+        # qwindow = window._window._window
+        # qwindow.showMaximized()
+        pass
     except Exception as e:
         error(f"Could not maximize window: {e}")
     # Don't initialize popup during onboarding

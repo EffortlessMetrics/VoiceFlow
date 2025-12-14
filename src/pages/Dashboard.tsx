@@ -33,7 +33,7 @@ export function Dashboard() {
         >
           <Menu className="h-5 w-5" />
         </Button>
-        <div className="flex items-center gap-2">
+         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary/80 rounded-lg flex items-center justify-center">
             <Mic className="h-4 w-4 text-primary-foreground" />
           </div>
