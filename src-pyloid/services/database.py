@@ -49,7 +49,7 @@ class DatabaseService:
         conn.commit()
         conn.close()
 
-    def _ensure_history_audio_columns(self, cursor: sqlite3.Cursor):
+    def _ensure_history_audio_columns(self, cursor: sqlite3.Cursor) -> None:
         """Ensure audio attachment columns exist on history (idempotent)."""
         columns = {
             "audio_relpath": "TEXT",
@@ -348,7 +348,7 @@ class DatabaseService:
 
         return streak
 
-    def _delete_audio_file(self, relpath: str):
+    def _delete_audio_file(self, relpath: str) -> None:
         """Delete an audio file, ignoring missing files."""
         try:
             data_dir = self.db_path.parent.resolve()

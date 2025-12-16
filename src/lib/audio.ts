@@ -11,6 +11,7 @@ export function base64ToBlobUrl(base64: string, mime: string): string {
     const blob = new Blob([byteArray], { type: mime });
     return URL.createObjectURL(blob);
   } catch (err) {
+    console.error("Failed to create audio blob URL:", err);
     throw new Error(INVALID_AUDIO_PAYLOAD);
   }
 }

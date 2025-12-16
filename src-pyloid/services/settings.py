@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, Optional
 from .database import DatabaseService
 
 
@@ -40,7 +40,7 @@ class Settings:
 class SettingsService:
     def __init__(self, db: DatabaseService):
         self.db = db
-        self._cache: Settings = None
+        self._cache: Optional[Settings] = None
 
     def get_settings(self) -> Settings:
         if self._cache:
@@ -61,14 +61,15 @@ class SettingsService:
 
     def update_settings(
         self,
-        language: str = None,
-        model: str = None,
-        auto_start: bool = None,
-        retention: int = None,
-        theme: str = None,
-        onboarding_complete: bool = None,
-        microphone: int = None,
-        save_audio_to_history: bool = None,
+        *,
+        language: Optional[str] = None,
+        model: Optional[str] = None,
+        auto_start: Optional[bool] = None,
+        retention: Optional[int] = None,
+        theme: Optional[str] = None,
+        onboarding_complete: Optional[bool] = None,
+        microphone: Optional[int] = None,
+        save_audio_to_history: Optional[bool] = None,
     ) -> Settings:
         if language is not None:
             self.db.set_setting("language", language)

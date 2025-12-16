@@ -287,6 +287,7 @@ export function HistoryPage() {
                 <span>{Math.round((audioMeta.durationMs ?? 0) / 1000)}s</span>
               ) : null}
             </div>
+            {/* biome-ignore lint/a11y/useMediaCaption: transcript text is already displayed in the history card */}
             <audio controls autoPlay className="w-full">
               <source src={audioUrl} type={audioMeta?.mime || "audio/wav"} />
               Your browser does not support audio playback.

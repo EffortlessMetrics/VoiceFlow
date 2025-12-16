@@ -358,7 +358,7 @@ class AppController:
             "durationMs": entry.get("audio_duration_ms"),
         }
 
-    def _save_audio_attachment(self, history_id: int, audio) -> dict:
+    def _save_audio_attachment(self, history_id: int, audio: np.ndarray) -> dict:
         """Persist recorded audio as WAV and return metadata for DB update."""
         # Ensure audio directory exists
         audio_dir = self.db.db_path.parent / "audio"

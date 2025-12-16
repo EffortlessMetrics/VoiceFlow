@@ -1,3 +1,4 @@
+from typing import Optional
 from pyloid.rpc import PyloidRPC, RPCContext
 from app_controller import get_controller
 from services.logger import debug
@@ -29,14 +30,15 @@ async def get_settings():
 
 @server.method()
 async def update_settings(
-    language: str = None,
-    model: str = None,
-    autoStart: bool = None,
-    retention: int = None,
-    theme: str = None,
-    onboardingComplete: bool = None,
-    microphone: int = None,
-    saveAudioToHistory: bool = None,
+    *,
+    language: Optional[str] = None,
+    model: Optional[str] = None,
+    autoStart: Optional[bool] = None,
+    retention: Optional[int] = None,
+    theme: Optional[str] = None,
+    onboardingComplete: Optional[bool] = None,
+    microphone: Optional[int] = None,
+    saveAudioToHistory: Optional[bool] = None,
 ):
     controller = get_controller()
     kwargs = {}
