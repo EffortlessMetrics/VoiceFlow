@@ -105,6 +105,7 @@ export function HistoryPage() {
   };
 
   const groupedHistory = groupByDate(history);
+  const durationMs = audioMeta?.durationMs;
 
   return (
     <div className="min-h-screen w-full bg-background/50 relative overflow-x-hidden">
@@ -283,9 +284,7 @@ export function HistoryPage() {
                 <FileAudio className="w-4 h-4 text-primary" />
                 <span>{audioMeta?.fileName || "history_audio.wav"}</span>
               </div>
-              {audioMeta?.durationMs ? (
-                <span>{Math.round((audioMeta.durationMs ?? 0) / 1000)}s</span>
-              ) : null}
+              {durationMs ? <span>{Math.round(durationMs / 1000)}s</span> : null}
             </div>
             {/* biome-ignore lint/a11y/useMediaCaption: transcript text is already displayed in the history card */}
             <audio controls autoPlay className="w-full">

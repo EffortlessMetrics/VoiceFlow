@@ -354,7 +354,9 @@ class DatabaseService:
             data_dir = self.db_path.parent.resolve()
             audio_root = (data_dir / "audio").resolve()
             path = (data_dir / relpath).resolve()
-            if audio_root not in path.parents:
+            try:
+                path.relative_to(audio_root)
+            except ValueError:
                 return
             if path.exists():
                 path.unlink()
