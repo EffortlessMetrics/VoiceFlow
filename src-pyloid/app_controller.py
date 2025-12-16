@@ -2,6 +2,10 @@ from typing import Optional, Callable
 import threading
 import time
 import os
+import base64
+import wave
+from pathlib import Path
+import numpy as np
 
 from services.database import DatabaseService
 from services.settings import SettingsService
@@ -156,8 +160,22 @@ class AppController:
                     info("Pasting text at cursor...")
                     self.clipboard_service.paste_at_cursor(text)
 
-                    # Save to history
-                    self.db.add_history(text)
+                    # Save to history (and audio if enabled)
+                    history_id = self.db.add_history(text)
+
+                    if settings.save_audio_to_history:
+                        try:
+                            audio_meta = self._save_audio_attachment(history_id, audio)
+                            self.db.update_history_audio(
+                                history_id,
+                                audio_relpath=audio_meta["audio_relpath"],
+                                audio_duration_ms=audio_meta["audio_duration_ms"],
+                                audio_size_bytes=audio_meta["audio_size_bytes"],
+                                audio_mime=audio_meta["audio_mime"],
+                            )
+                            info(f"Saved audio attachment for history {history_id}")
+                        except Exception as exc:
+                            warning(f"Failed to save audio attachment: {exc}")
 
                     if self._on_transcription_complete:
                         self._on_transcription_complete(text)
@@ -192,6 +210,7 @@ class AppController:
             "theme": settings.theme,
             "onboardingComplete": settings.onboarding_complete,
             "microphone": settings.microphone,
+            "saveAudioToHistory": settings.save_audio_to_history,
         }
 
     def update_settings(self, **kwargs) -> dict:
@@ -202,6 +221,9 @@ class AppController:
             mapped["auto_start"] = kwargs["autoStart"]
         if "onboardingComplete" in kwargs:
             mapped["onboarding_complete"] = kwargs["onboardingComplete"]
+        if "saveAudioToHistory" in kwargs:
+            mapped["save_audio_to_history"] = kwargs["saveAudioToHistory"]
+
         for key in ["language", "model", "retention", "theme", "microphone"]:
             if key in kwargs:
                 mapped[key] = kwargs[key]
@@ -224,8 +246,8 @@ class AppController:
         return self.get_settings()
 
     # History methods for RPC
-    def get_history(self, limit: int = 100, offset: int = 0, search: str = None) -> list:
-        return self.db.get_history(limit, offset, search)
+    def get_history(self, limit: int = 100, offset: int = 0, search: str = None, include_audio_meta: bool = False) -> list:
+        return self.db.get_history(limit, offset, search, include_audio_meta)
 
     def delete_history(self, history_id: int):
         self.db.delete_history(history_id)
@@ -307,8 +329,77 @@ class AppController:
         info("Resetting all user data...")
         self.db.reset_all_data()
         # Reset settings service cache
-        self.settings_service._settings = None
+        self.settings_service._cache = None
         info("All data has been reset")
+
+    def get_history_audio(self, history_id: int) -> dict:
+        """Fetch audio attachment for a history entry as base64."""
+        entry = self.db.get_history_entry(history_id)
+        if not entry or not entry.get("audio_relpath"):
+            raise FileNotFoundError("No audio stored for this history item")
+
+        data_dir = self.db.db_path.parent
+        audio_root = (data_dir / "audio").resolve()
+        audio_path = (data_dir / entry["audio_relpath"]).resolve()
+
+        # Ensure the resolved path stays within the audio directory to avoid traversal
+        if audio_root not in audio_path.parents:
+            raise FileNotFoundError("Audio path is invalid")
+
+        if not audio_path.exists():
+            raise FileNotFoundError("Audio file missing on disk")
+
+        data = audio_path.read_bytes()
+        return {
+            "base64": base64.b64encode(data).decode("utf-8"),
+            "mime": entry.get("audio_mime") or "audio/wav",
+            "fileName": audio_path.name,
+            "sizeBytes": audio_path.stat().st_size,
+            "durationMs": entry.get("audio_duration_ms"),
+        }
+
+    def _save_audio_attachment(self, history_id: int, audio) -> dict:
+        """Persist recorded audio as WAV and return metadata for DB update."""
+        # Ensure audio directory exists
+        audio_dir = self.db.db_path.parent / "audio"
+        audio_dir.mkdir(parents=True, exist_ok=True)
+
+        relpath = Path("audio") / f"history_{history_id}.wav"
+        output_path = self.db.db_path.parent / relpath
+        tmp_path = output_path.with_suffix(".wav.tmp")
+
+        # Normalize audio into flat int16 PCM
+        audio_array = np.asarray(audio)
+        if audio_array.ndim > 1:
+            audio_array = audio_array.reshape(-1)
+
+        if np.issubdtype(audio_array.dtype, np.floating):
+            audio_clipped = np.clip(audio_array, -1.0, 1.0)
+            audio_int16 = (audio_clipped * 32767).astype(np.int16)
+        elif audio_array.dtype == np.int16:
+            audio_int16 = audio_array
+        else:
+            # Fallback: clip to int16 range
+            audio_clipped = np.clip(audio_array, -32768, 32767)
+            audio_int16 = audio_clipped.astype(np.int16)
+
+        with wave.open(str(tmp_path), "wb") as wf:
+            wf.setnchannels(self.audio_service.CHANNELS)
+            wf.setsampwidth(2)  # 16-bit PCM
+            wf.setframerate(self.audio_service.SAMPLE_RATE)
+            wf.writeframes(audio_int16.tobytes())
+
+        tmp_path.replace(output_path)
+
+        duration_ms = int((len(audio_int16) / float(self.audio_service.SAMPLE_RATE)) * 1000)
+        size_bytes = output_path.stat().st_size
+
+        return {
+            "audio_relpath": relpath.as_posix(),
+            "audio_duration_ms": duration_ms,
+            "audio_size_bytes": size_bytes,
+            "audio_mime": "audio/wav",
+        }
 
 
 # Singleton instance

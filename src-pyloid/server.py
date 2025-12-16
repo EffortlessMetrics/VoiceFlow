@@ -36,6 +36,7 @@ async def update_settings(
     theme: str = None,
     onboardingComplete: bool = None,
     microphone: int = None,
+    saveAudioToHistory: bool = None,
 ):
     controller = get_controller()
     kwargs = {}
@@ -53,6 +54,8 @@ async def update_settings(
         kwargs["onboardingComplete"] = onboardingComplete
     if microphone is not None:
         kwargs["microphone"] = microphone
+    if saveAudioToHistory is not None:
+        kwargs["saveAudioToHistory"] = saveAudioToHistory
 
     # Check if onboarding was already complete before this update
     old_settings = controller.get_settings()
@@ -75,9 +78,15 @@ async def get_options():
 
 
 @server.method()
-async def get_history(limit: int = 100, offset: int = 0, search: str = None):
+async def get_history(limit: int = 100, offset: int = 0, search: str = None, include_audio_meta: bool = False):
     controller = get_controller()
-    return controller.get_history(limit, offset, search)
+    return controller.get_history(limit, offset, search, include_audio_meta)
+
+
+@server.method()
+async def get_history_audio(history_id: int):
+    controller = get_controller()
+    return controller.get_history_audio(history_id)
 
 
 @server.method()
