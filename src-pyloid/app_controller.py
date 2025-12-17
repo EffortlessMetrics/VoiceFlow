@@ -1,4 +1,4 @@
-from typing import Optional, Callable
+from typing import Optional, Callable, TypedDict
 import threading
 import time
 import os
@@ -15,6 +15,13 @@ from services.transcription import TranscriptionService
 from services.hotkey import HotkeyService
 from services.clipboard import ClipboardService
 from services.logger import info, error, debug, warning, exception
+
+
+class AudioAttachmentMeta(TypedDict):
+    audio_relpath: str
+    audio_duration_ms: int
+    audio_size_bytes: int
+    audio_mime: str
 
 
 class AppController:
@@ -343,9 +350,7 @@ class AppController:
         audio_root = (data_dir / "audio").resolve()
         audio_path = (data_dir / entry["audio_relpath"]).resolve()
 
-        try:
-            audio_path.relative_to(audio_root)
-        except ValueError:
+        if not audio_path.is_relative_to(audio_root):
             raise FileNotFoundError("Audio path is invalid")
 
         if not audio_path.exists():
@@ -360,7 +365,7 @@ class AppController:
             "durationMs": entry.get("audio_duration_ms"),
         }
 
-    def _save_audio_attachment(self, history_id: int, audio: np.ndarray) -> dict:
+    def _save_audio_attachment(self, history_id: int, audio: np.ndarray) -> AudioAttachmentMeta:
         """Persist recorded audio as WAV and return metadata for DB update."""
         # Ensure audio directory exists
         audio_dir = self.db.db_path.parent / "audio"
