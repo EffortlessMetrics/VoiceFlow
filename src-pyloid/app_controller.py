@@ -182,7 +182,7 @@ class AppController:
                                 audio_mime=audio_meta["audio_mime"],
                             )
                             info(f"Saved audio attachment for history {history_id}")
-                        except (OSError, sqlite3.Error, wave.Error, ValueError) as exc:
+                        except (OSError, wave.Error, sqlite3.Error, ValueError) as exc:
                             warning(f"Failed to save audio attachment: {exc}")
 
                     if self._on_transcription_complete:
@@ -350,7 +350,9 @@ class AppController:
         audio_root = (data_dir / "audio").resolve()
         audio_path = (data_dir / entry["audio_relpath"]).resolve()
 
-        if not audio_path.is_relative_to(audio_root):
+        try:
+            audio_path.relative_to(audio_root)
+        except ValueError:
             raise FileNotFoundError("Audio path is invalid")
 
         if not audio_path.exists():
